@@ -29,6 +29,7 @@ class ValuePrimitiveType(CloudFormationLintRule):
                   'values that match those types.'
     source_url = 'https://github.com/awslabs/cfn-python-lint'
     tags = ['resources']
+    weakly_typed = True
 
     def __init__(self, ):
         """Init """
@@ -44,6 +45,7 @@ class ValuePrimitiveType(CloudFormationLintRule):
         """Chec item type"""
         matches = list()
 
+        value = self.weak_convert(value, item_type)
         if isinstance(value, dict) and item_type == 'Json':
             return matches
         elif item_type in ['String']:
@@ -75,6 +77,27 @@ class ValuePrimitiveType(CloudFormationLintRule):
             matches.append(RuleMatch(path, message))
 
         return matches
+
+    def weak_convert(self, value, desired):
+        """convert type if possible"""
+        if not self.weakly_typed:
+            return value
+        if desired == 'Boolean' and isinstance(value, (str, six.text_type, six.string_types)):
+            if value.title() == 'True':
+                value = True
+            elif value.title() == 'False':
+                value = False
+        elif desired == 'Double':
+            try:
+                value = float(value)
+            except ValueError:
+                pass
+        elif desired == "String" and not isinstance(value, (str, six.text_type, six.string_types)):
+            value = str(value)
+        elif desired in ["Integer", "Long"] and isinstance(value, (str, six.text_type, six.string_types)):
+            if value.isdigit():
+                value = int(value)
+        return value
 
     def check_value(self, value, path, **kwargs):
         """Check Value"""
